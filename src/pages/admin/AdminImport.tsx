@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { parseBank, SUBJECTS, type BankItem, type ParseResult } from '../../importParse';
 
-type Result = { total?: number; inserted: number; skipped?: number; status: string; errors: { id?: string; line?: number; error: string }[] };
+type Result = { total?: number; inserted: number; updated?: number; unchanged?: number; skipped?: number; status: string; errors: { id?: string; line?: number; error: string }[] };
 
 export default function AdminImport() {
   const qc = useQueryClient();
@@ -56,14 +56,20 @@ export default function AdminImport() {
     setBusy(true);
     setErr('');
     try {
-      let total: Result = { inserted: 0, skipped: 0, status: publish ? 'published' : 'draft', errors: [] };
+      let total: Result = { inserted: 0, updated: 0, unchanged: 0, status: publish ? 'published' : 'draft', errors: [] };
       // dikirim bertahap supaya file besar tidak melewati batas ukuran request
       for (let i = 0; i < items.length; i += 500) {
         const r = await api<Result>(`/admin/questions/import-json?publish=${publish}&source=${encodeURIComponent(source)}&grade=${grade}`, {
           raw: JSON.stringify(items.slice(i, i + 500)),
           contentType: 'application/json',
         });
-        total = { ...total, inserted: total.inserted + r.inserted, skipped: (total.skipped ?? 0) + (r.skipped ?? 0), errors: [...total.errors, ...r.errors] };
+        total = {
+          ...total,
+          inserted: total.inserted + r.inserted,
+          updated: (total.updated ?? 0) + (r.updated ?? 0),
+          unchanged: (total.unchanged ?? 0) + (r.unchanged ?? 0),
+          errors: [...total.errors, ...r.errors],
+        };
       }
       setRes(total);
       setPreview(null);
@@ -86,7 +92,8 @@ export default function AdminImport() {
           <h2>Unggah file</h2>
           <p className="small muted">
             Markdown (.md), JSON (array, satu objek, atau satu objek per baris), HTML bank soal (berisi <code>const DATA = [...]</code>), atau CSV. File dibaca dulu dan ditampilkan
-            pratinjaunya sebelum masuk. Impor ulang aman: soal yang sama dilewati.
+            pratinjaunya sebelum masuk. Soal yang sudah ada (id sumber sama, atau teks soal + pilihan sama) diperbarui, bukan
+            ditambah. Soal yang sudah pernah dipakai di sesi dibuatkan versi baru supaya riwayat nilai tetap utuh.
           </p>
           <div className="grid three" style={{ gap: 10 }}>
             <label className="field">Id sumber
@@ -138,7 +145,8 @@ export default function AdminImport() {
 
           {res && (
             <div className="success">
-              {res.inserted} soal masuk ({res.status === 'published' ? 'terbit' : 'draf'}){res.skipped ? `, ${res.skipped} dilewati karena sudah ada` : ''}{res.errors.length ? `, ${res.errors.length} gagal` : ''}.
+              {res.inserted} soal baru ({res.status === 'published' ? 'terbit' : 'draf'}), {res.updated ?? 0} diperbarui karena soalnya sudah ada,
+              {' '}{res.unchanged ?? 0} sama persis (tidak berubah){res.errors.length ? `, ${res.errors.length} gagal` : ''}.
             </div>
           )}
           {res && res.errors.length > 0 && (

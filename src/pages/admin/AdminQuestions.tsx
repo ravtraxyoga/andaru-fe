@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api } from '../../api';
 import { Icon } from '../../components/Icon';
 import type { Subject } from '../../types';
 
 type Row = { id: number; subject: string; topic: string; grade: number; difficulty: number; stem: string; status: string; has_image: boolean };
+type DupGroup = { subject: string; stem: string; count: number; items: { id: number; status: string; source_ref: string | null; topic: string; correct: string; used: boolean }[] };
 type Stats = { by_subject: { subject_id: number; subject: string; published: number; draft: number; retired: number }[]; parents: number; children: number; sessions_7d: number };
 
 const STATUS_TONE: Record<string, string> = { published: 'good', draft: 'mid', retired: 'muted' };
@@ -23,6 +24,21 @@ export default function AdminQuestions() {
     queryFn: ({ pageParam, signal }) =>
       api<{ items: Row[]; next_before_id: number | null }>(`/admin/questions?${params}${pageParam ? `&before_id=${pageParam}` : ''}`, { signal }),
     getNextPageParam: (p) => p.next_before_id,
+  });
+  const qc = useQueryClient();
+  const [checkDup, setCheckDup] = useState(false);
+  const dups = useQuery({
+    queryKey: ['admin-dups'],
+    queryFn: ({ signal }) => api<{ groups: DupGroup[] }>('/admin/questions/duplicates', { signal }),
+    enabled: checkDup,
+  });
+  const merge = useMutation({
+    mutationFn: () => api<{ retired: number }>('/admin/questions/duplicates/merge', { method: 'POST' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-dups'] });
+      qc.invalidateQueries({ queryKey: ['admin-questions'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
   });
   const topics = subjects.data?.find((s) => String(s.id) === f.subject_id)?.topics ?? [];
   const rows = list.data?.pages.flatMap((p) => p.items) ?? [];
@@ -42,6 +58,40 @@ export default function AdminQuestions() {
         {stats.data?.by_subject.map((s) => (
           <div className="stat" key={s.subject_id}><b>{s.published}</b><span>{s.subject}{s.draft ? ` · ${s.draft} draf` : ''}</span></div>
         ))}
+      </div>
+      <div className="card stack">
+        <div className="row between">
+          <div>
+            <h2>Cek duplikat</h2>
+            <p className="small muted">Soal dianggap sama bila mapel, teks soal, dan kumpulan pilihannya sama (spasi, huruf besar-kecil, dan urutan pilihan diabaikan).</p>
+          </div>
+          <button className="btn ghost" onClick={() => (checkDup ? dups.refetch() : setCheckDup(true))} disabled={dups.isFetching}>{dups.isFetching ? 'Memeriksa…' : 'Cek sekarang'}</button>
+        </div>
+        {dups.data && dups.data.groups.length === 0 && <div className="success">Tidak ada soal duplikat.</div>}
+        {dups.data && dups.data.groups.length > 0 && (
+          <>
+            <div className="notice">
+              {dups.data.groups.length} kelompok soal duplikat. Gabungkan = sisakan satu per kelompok (yang terbit didahulukan), sisanya di-retire.
+            </div>
+            <div className="list">
+              {dups.data.groups.map((g, i) => (
+                <div className="item small" key={i} style={{ display: 'block' }}>
+                  <div className="muted tiny">{g.subject} · {g.count} soal</div>
+                  <div>{g.stem}</div>
+                  <div className="chips" style={{ marginTop: 6 }}>
+                    {g.items.map((x) => (
+                      <Link key={x.id} to={`/admin/soal/${x.id}`} className={`badge ${STATUS_TONE[x.status]}`}>
+                        #{x.id} · kunci {x.correct}{x.used ? ' · dipakai' : ''}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div><button className="btn" onClick={() => merge.mutate()} disabled={merge.isPending}>Gabungkan semua duplikat</button></div>
+          </>
+        )}
+        {merge.data && <div className="success">{merge.data.retired} soal duplikat di-retire.</div>}
       </div>
       <div className="card stack">
         <form className="grid three" style={{ gap: 10 }} onSubmit={(e) => { e.preventDefault(); setSearch(f.q); }}>

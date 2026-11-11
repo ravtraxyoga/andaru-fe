@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api } from '../../api';
+import { api, ApiError } from '../../api';
 import { Icon } from '../../components/Icon';
 import type { Subject } from '../../types';
 
@@ -63,6 +63,8 @@ export default function QuestionEdit() {
       setMsg({ ok: true, text: 'replaced' in r && r.replaced ? `Soal terbit tidak diubah; versi baru #${r.id} dibuat dan #${r.replaced} di-retire.` : 'Tersimpan' });
     } catch (x) {
       setMsg({ ok: false, text: (x as Error).message });
+      // Soal yang sama sudah ada: langsung buka soal itu untuk diperbarui.
+      if (x instanceof ApiError && x.code === 'duplicate' && typeof x.data?.id === 'number') nav(`/admin/soal/${x.data.id}`);
     } finally {
       setBusy(false);
     }
