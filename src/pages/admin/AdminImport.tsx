@@ -7,7 +7,6 @@ type Result = { total?: number; inserted: number; updated?: number; unchanged?: 
 
 export default function AdminImport() {
   const qc = useQueryClient();
-  const [publish, setPublish] = useState(false);
   const [source, setSource] = useState('tka9');
   const [grade, setGrade] = useState(9);
   const [subject, setSubject] = useState('');
@@ -30,7 +29,7 @@ export default function AdminImport() {
     if (file.name.toLowerCase().endsWith('.csv')) {
       setBusy(true);
       try {
-        setRes(await api<Result>(`/admin/questions/import?publish=${publish}`, { raw: text, contentType: 'text/csv' }));
+        setRes(await api<Result>('/admin/questions/import', { raw: text, contentType: 'text/csv' }));
         refresh();
       } catch (x) {
         setErr((x as Error).message);
@@ -56,10 +55,10 @@ export default function AdminImport() {
     setBusy(true);
     setErr('');
     try {
-      let total: Result = { inserted: 0, updated: 0, unchanged: 0, status: publish ? 'published' : 'draft', errors: [] };
+      let total: Result = { inserted: 0, updated: 0, unchanged: 0, status: 'published', errors: [] };
       // dikirim bertahap supaya file besar tidak melewati batas ukuran request
       for (let i = 0; i < items.length; i += 500) {
-        const r = await api<Result>(`/admin/questions/import-json?publish=${publish}&source=${encodeURIComponent(source)}&grade=${grade}`, {
+        const r = await api<Result>(`/admin/questions/import-json?source=${encodeURIComponent(source)}&grade=${grade}`, {
           raw: JSON.stringify(items.slice(i, i + 500)),
           contentType: 'application/json',
         });
@@ -92,7 +91,7 @@ export default function AdminImport() {
           <h2>Unggah file</h2>
           <p className="small muted">
             Markdown (.md), JSON (array, satu objek, atau satu objek per baris), HTML bank soal (berisi <code>const DATA = [...]</code>), atau CSV. File dibaca dulu dan ditampilkan
-            pratinjaunya sebelum masuk. Soal yang sudah ada (id sumber sama, atau teks soal + pilihan sama) diperbarui, bukan
+            pratinjaunya sebelum masuk, lalu langsung terbit. Soal yang sudah ada (id sumber sama, atau teks soal + pilihan sama) diperbarui, bukan
             ditambah. Soal yang sudah pernah dipakai di sesi dibuatkan versi baru supaya riwayat nilai tetap utuh.
           </p>
           <div className="grid three" style={{ gap: 10 }}>
@@ -111,9 +110,6 @@ export default function AdminImport() {
               </select>
             </label>
           </div>
-          <label className="switch">Langsung terbitkan
-            <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
-          </label>
           <input type="file" accept=".md,.markdown,.txt,.json,.jsonl,.csv,.html,.htm" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
           {busy && <p className="muted small">Mengimpor…</p>}
           {err && <div className="error" role="alert">{err}</div>}
@@ -145,7 +141,7 @@ export default function AdminImport() {
 
           {res && (
             <div className="success">
-              {res.inserted} soal baru ({res.status === 'published' ? 'terbit' : 'draf'}), {res.updated ?? 0} diperbarui karena soalnya sudah ada,
+              {res.inserted} soal baru langsung terbit, {res.updated ?? 0} diperbarui karena soalnya sudah ada,
               {' '}{res.unchanged ?? 0} sama persis (tidak berubah){res.errors.length ? `, ${res.errors.length} gagal` : ''}.
             </div>
           )}

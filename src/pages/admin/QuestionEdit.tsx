@@ -70,7 +70,7 @@ export default function QuestionEdit() {
     }
   }
 
-  async function setStatus(action: 'publish' | 'retire') {
+  async function setStatus(action: 'retire') {
     try {
       await api(`/admin/questions/${id}/${action}`, { method: 'POST' });
       existing.refetch();
@@ -98,13 +98,15 @@ export default function QuestionEdit() {
         <h1>{isNew ? 'Soal baru' : `Soal #${id}`}</h1>
         {!isNew && (
           <div className="row">
-            {q.status === 'draft' && <button type="button" className="btn ghost" onClick={() => setStatus('publish')}>Terbitkan</button>}
             {q.status !== 'retired' && <button type="button" className="btn danger" onClick={() => confirm('Retire soal ini? Soal tidak akan dipakai di sesi baru.') && setStatus('retire')}>Retire</button>}
           </div>
         )}
       </div>
       {msg && <div className={msg.ok ? 'success' : 'error'} role="status">{msg.text}</div>}
-      {q.status === 'published' && <div className="notice">Soal sudah terbit. Menyimpan perubahan membuat versi baru dan me-retire versi ini, supaya riwayat sesi tetap utuh.</div>}
+      {q.status === 'retired' && <div className="notice">Soal ini sudah di-retire dan tidak dipakai di sesi baru.</div>}
+      {q.stats && q.stats.answered > 0 && q.status !== 'retired' && (
+        <div className="notice">Soal ini sudah pernah keluar di sesi anak. Menyimpan perubahan membuat versi baru dan me-retire versi ini, supaya riwayat nilai tetap utuh.</div>
+      )}
       {q.stats && <p className="small muted">Dijawab {q.stats.answered}× · benar {q.stats.correct}× {q.stats.answered ? `(${Math.round((q.stats.correct / q.stats.answered) * 100)}%)` : ''}</p>}
       <fieldset disabled={locked} className="card stack" style={{ border: '1px solid var(--line)' }}>
         <div className="grid three" style={{ gap: 12 }}>

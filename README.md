@@ -9,7 +9,7 @@ Anak tidak mengerjakan soal di web (pengerjaan hanya di aplikasi karena butuh Mo
 - Laporan sesi, catatan keamanan (keluar Mode Fokus), pembahasan
 - Pengaturan: ganti PIN, buka kunci darurat
 - Daru: profil anak usia dini, waktu main per hari, progres per dunia, hapus data
-- Admin: bank soal (cari, ubah, terbit, retire, gambar), impor Markdown (.md)/JSON/HTML/CSV dengan pratinjau sebelum masuk (`src/importParse.ts`)
+- Admin: bank soal (cari, ubah, retire, gambar; soal langsung terbit tanpa draf), impor Markdown (.md)/JSON/HTML/CSV dengan pratinjau sebelum masuk (`src/importParse.ts`)
 
 ```bash
 pnpm install

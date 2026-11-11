@@ -10,7 +10,7 @@ type DupGroup = { subject: string; stem: string; count: number; items: { id: num
 type Stats = { by_subject: { subject_id: number; subject: string; published: number; draft: number; retired: number }[]; parents: number; children: number; sessions_7d: number };
 
 const STATUS_TONE: Record<string, string> = { published: 'good', draft: 'mid', retired: 'muted' };
-const STATUS_ID: Record<string, string> = { published: 'Terbit', draft: 'Draf', retired: 'Retired' };
+const STATUS_ID: Record<string, string> = { published: 'Aktif', draft: 'Aktif', retired: 'Retired' };
 
 export default function AdminQuestions() {
   const [f, setF] = useState({ subject_id: '', topic_id: '', status: '', q: '' });
@@ -56,7 +56,7 @@ export default function AdminQuestions() {
       </div>
       <div className="stats">
         {stats.data?.by_subject.map((s) => (
-          <div className="stat" key={s.subject_id}><b>{s.published}</b><span>{s.subject}{s.draft ? ` · ${s.draft} draf` : ''}</span></div>
+          <div className="stat" key={s.subject_id}><b>{s.published + s.draft}</b><span>{s.subject}</span></div>
         ))}
       </div>
       <div className="card stack">
@@ -105,8 +105,7 @@ export default function AdminQuestions() {
           </select>
           <select className="input" aria-label="Status" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
             <option value="">Semua status</option>
-            <option value="published">Terbit</option>
-            <option value="draft">Draf</option>
+            <option value="published">Aktif</option>
             <option value="retired">Retired</option>
           </select>
           <input className="input" type="search" placeholder="Cari teks soal, tekan Enter" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} aria-label="Cari" />
