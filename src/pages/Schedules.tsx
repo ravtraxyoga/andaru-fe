@@ -9,7 +9,7 @@ import { useSelectedChild } from '../hooks/useChildren';
 import { DAYS, daysLabel, fmtDateTime, gapLabel, STATUS_LABEL } from '../format';
 import type { Schedule, SessionRow, Subject } from '../types';
 
-type Draft = { subject_id: number; days_mask: number; start_time: string; question_count: number; duration_min: number; focus_mode: boolean };
+type Draft = { subject_ids: number[]; days_mask: number; start_time: string; question_count: number; duration_min: number; focus_mode: boolean };
 
 export default function Schedules() {
   const qc = useQueryClient();
@@ -45,7 +45,7 @@ export default function Schedules() {
   });
 
   if (!children.length) return <NoChild />;
-  const blank: Draft = { subject_id: subjects.data?.[0]?.id ?? 1, days_mask: 21, start_time: '16:00', question_count: 30, duration_min: 20, focus_mode: true };
+  const blank: Draft = { subject_ids: [subjects.data?.[0]?.id ?? 1], days_mask: 21, start_time: '16:00', question_count: 30, duration_min: 20, focus_mode: true };
 
   return (
     <div className="stack" style={{ gap: 20 }}>
@@ -81,7 +81,7 @@ export default function Schedules() {
                 </span>
                 <span className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
                   <button className="btn sm quiet" onClick={() => toggle.mutate(s)}>{s.active ? 'Jeda' : 'Aktifkan'}</button>
-                  <button className="icon-btn" aria-label="Ubah jadwal" onClick={() => setForm({ id: s.id, draft: { ...s } })}><Icon name="edit" /></button>
+                  <button className="icon-btn" aria-label="Ubah jadwal" onClick={() => setForm({ id: s.id, draft: { subject_ids: s.subject_ids, days_mask: s.days_mask, start_time: s.start_time, question_count: s.question_count, duration_min: s.duration_min, focus_mode: s.focus_mode } })}><Icon name="edit" /></button>
                   <button className="icon-btn" aria-label="Hapus jadwal" onClick={() => confirm('Hapus jadwal ini? Sesi mendatang yang belum dimulai ikut dihapus.') && remove.mutate(s)}><Icon name="trash" /></button>
                 </span>
               </div>
@@ -127,7 +127,7 @@ export default function Schedules() {
             childId={child?.id}
             onCancel={() => setNow(false)}
             onSave={async (d) => {
-              await api(`/children/${child!.id}/sessions`, { body: { subject_id: d.subject_id, question_count: d.question_count, duration_min: d.duration_min, focus_mode: d.focus_mode } });
+              await api(`/children/${child!.id}/sessions`, { body: { subject_ids: d.subject_ids, question_count: d.question_count, duration_min: d.duration_min, focus_mode: d.focus_mode } });
               refresh();
               setNow(false);
             }}
@@ -146,6 +146,7 @@ function ScheduleForm({ subjects, initial, oneOff, childId, onSave, onCancel }: 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!oneOff && d.days_mask === 0) return setErr('Pilih minimal satu hari');
+    if (d.subject_ids.length === 0) return setErr('Pilih minimal satu mata uji');
     setBusy(true);
     setErr('');
     setRule(undefined);
@@ -171,11 +172,28 @@ function ScheduleForm({ subjects, initial, oneOff, childId, onSave, onCancel }: 
           )}
         </div>
       )}
-      <label className="field">Mata uji
-        <select className="input" value={d.subject_id} onChange={(e) => setD({ ...d, subject_id: Number(e.target.value) })}>
-          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </label>
+      <div className="field">
+        <span>Mata uji (boleh lebih dari satu)</span>
+        <div className="chips" role="group" aria-label="Mata uji">
+          {subjects.map((s) => {
+            const on = d.subject_ids.includes(s.id);
+            return (
+              <button
+                type="button"
+                key={s.id}
+                className="chip"
+                aria-pressed={on}
+                onClick={() => setD({ ...d, subject_ids: on ? d.subject_ids.filter((x) => x !== s.id) : [...d.subject_ids, s.id] })}
+              >{s.name}</button>
+            );
+          })}
+        </div>
+        {d.subject_ids.length > 1 && (
+          <span className="tiny muted" style={{ fontWeight: 400 }}>
+            Sesi campuran: {d.question_count} soal dibagi rata ke {d.subject_ids.length} mapel (± {Math.floor(d.question_count / d.subject_ids.length)} soal per mapel), urut sesuai pilihan.
+          </span>
+        )}
+      </div>
       {!oneOff && (
         <>
           <div className="field">

@@ -63,6 +63,7 @@ export type Schedule = {
   id: number;
   child_id: number;
   subject_id: number;
+  subject_ids: number[];
   subject: string;
   days_mask: number;
   start_time: string;
