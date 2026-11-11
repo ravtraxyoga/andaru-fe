@@ -42,23 +42,48 @@ function hashId(s: string) {
 
 const clean = (s: string) => s.replace(/\*\*|__/g, '').replace(/^>\s?/, '').replace(/\\([.)\-*_#])/g, '$1').trim();
 
+const isItem = (x: unknown) => !!x && typeof x === 'object' && !Array.isArray(x) && 'soal' in x && 'pilihan' in x;
+
+/** Ubah hasil JSON.parse jadi daftar soal: array, satu objek soal, atau objek pembungkus ({ data: [...] }). */
+function asItems(v: unknown): unknown[] | null {
+  if (Array.isArray(v)) return v.length && v.some(isItem) ? v : null;
+  if (isItem(v)) return [v];
+  if (v && typeof v === 'object') {
+    for (const val of Object.values(v as Record<string, unknown>)) {
+      const inner = asItems(val);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+
+function tryParse(t: string): unknown[] | null {
+  try {
+    return asItems(JSON.parse(t));
+  } catch {
+    return null;
+  }
+}
+
 function tryJsonArray(text: string): unknown[] | null {
-  const t = text.trim();
-  if (t.startsWith('[')) {
-    try {
-      const v = JSON.parse(t);
-      if (Array.isArray(v)) return v;
-    } catch { /* bukan JSON murni */ }
+  const t = text.trim().replace(/^\uFEFF/, '');
+  if (t.startsWith('[') || t.startsWith('{')) {
+    // JSON utuh, atau objek-objek dipisah koma tanpa kurung siku
+    const v = tryParse(t) ?? tryParse(`[${t.replace(/,\s*$/, '')}]`);
+    if (v) return v;
+    // JSON Lines: satu objek per baris
+    const lines = t.split(/\r?\n/).map((l) => l.trim().replace(/,$/, '')).filter(Boolean);
+    const objs = lines.map((l) => tryParse(l)).filter((x): x is unknown[] => !!x).flat();
+    if (objs.length && objs.length === lines.length) return objs;
   }
   const m = text.match(/const\s+DATA\s*=\s*(\[[\s\S]*?\]);?\s*\n/);
   if (m) {
-    try { return JSON.parse(m[1]); } catch { /* lanjut */ }
+    const v = tryParse(m[1]);
+    if (v) return v;
   }
   for (const b of text.matchAll(/```(?:json)?\s*\n([\s\S]*?)```/g)) {
-    try {
-      const v = JSON.parse(b[1]);
-      if (Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
-    } catch { /* bukan JSON */ }
+    const v = tryParse(b[1]) ?? tryParse(`[${b[1].trim().replace(/,\s*$/, '')}]`);
+    if (v) return v;
   }
   return null;
 }
@@ -189,11 +214,13 @@ export function parseBank(text: string, fileName: string, defaultSubject = ''): 
   const arr = tryJsonArray(text);
   if (arr) {
     const problems: string[] = [];
-    const items = arr.filter((x): x is BankItem => {
-      const ok = !!x && typeof x === 'object' && 'soal' in x && 'pilihan' in x;
-      if (!ok) problems.push('ada entri tanpa soal/pilihan, dilewati');
-      return ok;
-    });
+    const items = arr
+      .filter((x): x is BankItem => {
+        if (!isItem(x)) problems.push('ada entri tanpa soal/pilihan, dilewati');
+        return isItem(x);
+      })
+      // tanpa id: dibuat dari isi soal supaya impor ulang tetap tidak dobel
+      .map((x) => ({ ...x, id: String(x.id ?? '') || hashId(`${x.mapel}|${x.topik}|${x.soal}`) }));
     return { items, problems, format: fileName.toLowerCase().endsWith('.md') ? 'Markdown (berisi JSON)' : 'JSON' };
   }
   return parseMarkdown(text, defaultSubject);

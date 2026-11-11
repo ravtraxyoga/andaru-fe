@@ -85,7 +85,7 @@ export default function AdminImport() {
         <div className="card stack">
           <h2>Unggah file</h2>
           <p className="small muted">
-            Markdown (.md), JSON, HTML bank soal (berisi <code>const DATA = [...]</code>), atau CSV. File dibaca dulu dan ditampilkan
+            Markdown (.md), JSON (array, satu objek, atau satu objek per baris), HTML bank soal (berisi <code>const DATA = [...]</code>), atau CSV. File dibaca dulu dan ditampilkan
             pratinjaunya sebelum masuk. Impor ulang aman: soal yang sama dilewati.
           </p>
           <div className="grid three" style={{ gap: 10 }}>
@@ -107,7 +107,7 @@ export default function AdminImport() {
           <label className="switch">Langsung terbitkan
             <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
           </label>
-          <input type="file" accept=".md,.markdown,.txt,.json,.csv,.html,.htm" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
+          <input type="file" accept=".md,.markdown,.txt,.json,.jsonl,.csv,.html,.htm" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
           {busy && <p className="muted small">Mengimpor…</p>}
           {err && <div className="error" role="alert">{err}</div>}
 
