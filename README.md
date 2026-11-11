@@ -1,6 +1,6 @@
 # Andaru Web
 
-Dasbor orang tua dan admin bank soal untuk Andaru (latihan TKA SMP). React 19, Vite, TypeScript, TanStack Query.
+Dasbor orang tua (versi web dari aplikasi Bunda) dan admin bank soal. React 19, Vite, TypeScript, TanStack Query.
 Anak tidak mengerjakan soal di web (pengerjaan hanya di aplikasi karena butuh Mode Fokus).
 
 - Ringkasan per anak (satu ortu bisa punya banyak anak), level dan syarat promosi, skor 6 sesi terakhir, topik lemah
@@ -8,6 +8,7 @@ Anak tidak mengerjakan soal di web (pengerjaan hanya di aplikasi karena butuh Mo
 - Jadwal rutin dan sesi sekarang; pesan bila melanggar batas/jeda dengan tombol ubah batas atau kurangi slot
 - Laporan sesi, catatan keamanan (keluar Mode Fokus), pembahasan
 - Pengaturan: ganti PIN, buka kunci darurat
+- Daru: profil anak usia dini, waktu main per hari, progres per dunia, hapus data
 - Admin: bank soal (cari, ubah, terbit, retire, gambar), impor JSON/HTML/CSV
 
 ```bash

@@ -9,6 +9,7 @@ const NAV = [
   { to: '/jadwal', label: 'Jadwal', icon: 'calendar' },
   { to: '/laporan', label: 'Laporan', icon: 'chart' },
   { to: '/anak', label: 'Anak', icon: 'kids' },
+  { to: '/daru', label: 'Daru', icon: 'star' },
   { to: '/pengaturan', label: 'Pengaturan', icon: 'settings' },
 ];
 

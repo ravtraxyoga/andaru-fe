@@ -15,6 +15,7 @@ const PATHS: Record<string, string> = {
   bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
   back: 'M15 18l-6-6 6-6',
   refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
 };
 
 export function Icon({ name, size = 20 }: { name: keyof typeof PATHS | string; size?: number }) {
