@@ -1,0 +1,10 @@
+/node_modules
+/dist
+*.tsbuildinfo
+.DS_Store
+.pnpm-debug.log*
+
+# env: .env.example tetap di-track
+.env
+.env.*
+!.env.example
