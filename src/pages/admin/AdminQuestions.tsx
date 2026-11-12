@@ -70,9 +70,11 @@ export default function AdminQuestions() {
         {dups.data && dups.data.groups.length === 0 && <div className="success">Tidak ada soal duplikat.</div>}
         {dups.data && dups.data.groups.length > 0 && (
           <>
-            <div className="notice">
-              {dups.data.groups.length} kelompok soal duplikat. Gabungkan = sisakan satu per kelompok (yang terbit didahulukan), sisanya di-retire.
+            <div className="notice row between" style={{ gap: 12, flexWrap: 'wrap' }}>
+              <span>{dups.data.groups.length} kelompok soal duplikat. Gabungkan = sisakan satu per kelompok (yang terbit didahulukan), sisanya di-retire.</span>
+              <button className="btn" onClick={() => merge.mutate()} disabled={merge.isPending}>{merge.isPending ? 'Menggabungkan…' : 'Gabungkan semua duplikat'}</button>
             </div>
+            {merge.isError && <div className="error">{(merge.error as Error).message}</div>}
             <div className="list">
               {dups.data.groups.map((g, i) => (
                 <div className="item small" key={i} style={{ display: 'block' }}>
@@ -88,7 +90,6 @@ export default function AdminQuestions() {
                 </div>
               ))}
             </div>
-            <div><button className="btn" onClick={() => merge.mutate()} disabled={merge.isPending}>Gabungkan semua duplikat</button></div>
           </>
         )}
         {merge.data && <div className="success">{merge.data.retired} soal duplikat di-retire.</div>}
