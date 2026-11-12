@@ -17,6 +17,8 @@ type Q = {
   explanation: string;
   image_key: string | null;
   status?: string;
+  twin_id?: number | null;
+  replaced_by?: number | null;
   stats?: { answered: number; correct: number };
 };
 
@@ -70,10 +72,12 @@ export default function QuestionEdit() {
     }
   }
 
-  async function setStatus(action: 'retire') {
+  async function setStatus(action: 'retire' | 'restore') {
     try {
       await api(`/admin/questions/${id}/${action}`, { method: 'POST' });
+      setMsg(action === 'restore' ? { ok: true, text: 'Soal aktif lagi dan bisa keluar di sesi baru.' } : null);
       existing.refetch();
+      qc.invalidateQueries({ queryKey: ['admin-dups'] });
       qc.invalidateQueries({ queryKey: ['admin-questions'] });
       qc.invalidateQueries({ queryKey: ['admin-stats'] });
     } catch (x) {
@@ -98,12 +102,20 @@ export default function QuestionEdit() {
         <h1>{isNew ? 'Soal baru' : `Soal #${id}`}</h1>
         {!isNew && (
           <div className="row">
+            {q.status === 'retired' && !q.twin_id && <button type="button" className="btn" onClick={() => setStatus('restore')}>Aktifkan lagi</button>}
             {q.status !== 'retired' && <button type="button" className="btn danger" onClick={() => confirm('Retire soal ini? Soal tidak akan dipakai di sesi baru.') && setStatus('retire')}>Retire</button>}
           </div>
         )}
       </div>
       {msg && <div className={msg.ok ? 'success' : 'error'} role="status">{msg.text}</div>}
-      {q.status === 'retired' && <div className="notice">Soal ini sudah di-retire dan tidak dipakai di sesi baru.</div>}
+      {q.status === 'retired' && (
+        <div className="notice">
+          Soal ini di-retire dan tidak dipakai di sesi baru.{' '}
+          {q.twin_id ? <>Alasannya: isinya sama dengan soal aktif <Link to={`/admin/soal/${q.twin_id}`}>#{q.twin_id}</Link>, jadi tidak bisa diaktifkan lagi selama soal itu aktif.</>
+            : q.replaced_by ? <>Alasannya: sudah diganti versi baru <Link to={`/admin/soal/${q.replaced_by}`}>#{q.replaced_by}</Link>. Mengaktifkan lagi membuat kedua versi sama-sama bisa keluar.</>
+            : 'Klik Aktifkan lagi untuk memakainya kembali.'}
+        </div>
+      )}
       {q.stats && q.stats.answered > 0 && q.status !== 'retired' && (
         <div className="notice">Soal ini sudah pernah keluar di sesi anak. Menyimpan perubahan membuat versi baru dan me-retire versi ini, supaya riwayat nilai tetap utuh.</div>
       )}

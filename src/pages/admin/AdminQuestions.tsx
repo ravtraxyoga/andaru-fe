@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState, type FormEvent } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { api } from '../../api';
+import { api, ApiError } from '../../api';
 import { Icon } from '../../components/Icon';
 import type { Subject } from '../../types';
 
-type Row = { id: number; subject: string; topic: string; grade: number; difficulty: number; stem: string; status: string; has_image: boolean };
+type Row = { id: number; subject: string; topic: string; grade: number; difficulty: number; stem: string; status: string; has_image: boolean; twin_id: number | null; replaced_by: number | null };
+type Page = { items: Row[]; total: number; page: number; per_page: number; pages: number };
+const PER_PAGE = [10, 25, 50, 100];
+const PER_KEY = 'andaru.admin.perPage';
+const num = (n: number) => n.toLocaleString('id-ID');
 type DupGroup = { subject: string; stem: string; count: number; items: { id: number; status: string; source_ref: string | null; topic: string; correct: string; used: boolean }[] };
 type Stats = { by_subject: { subject_id: number; subject: string; published: number; draft: number; retired: number }[]; parents: number; children: number; sessions_7d: number };
 
@@ -17,14 +21,23 @@ export default function AdminQuestions() {
   const [search, setSearch] = useState('');
   const subjects = useQuery({ queryKey: ['subjects'], queryFn: ({ signal }) => api<Subject[]>('/subjects', { signal }) });
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: ({ signal }) => api<Stats>('/admin/stats', { signal }) });
-  const params = new URLSearchParams(Object.entries({ ...f, q: search }).filter(([, v]) => v));
-  const list = useInfiniteQuery({
-    queryKey: ['admin-questions', params.toString()],
-    initialPageParam: null as number | null,
-    queryFn: ({ pageParam, signal }) =>
-      api<{ items: Row[]; next_before_id: number | null }>(`/admin/questions?${params}${pageParam ? `&before_id=${pageParam}` : ''}`, { signal }),
-    getNextPageParam: (p) => p.next_before_id,
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(PER_KEY));
+      return PER_PAGE.includes(v) ? v : 25;
+    } catch {
+      return 25;
+    }
   });
+  const filterKey = new URLSearchParams(Object.entries({ ...f, q: search }).filter(([, v]) => v)).toString();
+  useEffect(() => setPage(1), [filterKey, perPage]);
+  const list = useQuery({
+    queryKey: ['admin-questions', filterKey, page, perPage],
+    queryFn: ({ signal }) => api<Page>(`/admin/questions?${filterKey}${filterKey ? '&' : ''}page=${page}&per_page=${perPage}`, { signal }),
+    placeholderData: keepPreviousData,
+  });
+  const [rowErr, setRowErr] = useState<{ id: number; text: string } | null>(null);
   const qc = useQueryClient();
   const [checkDup, setCheckDup] = useState(false);
   const dups = useQuery({
@@ -41,7 +54,17 @@ export default function AdminQuestions() {
     },
   });
   const topics = subjects.data?.find((s) => String(s.id) === f.subject_id)?.topics ?? [];
-  const rows = list.data?.pages.flatMap((p) => p.items) ?? [];
+  const rows = list.data?.items ?? [];
+  const restore = useMutation({
+    mutationFn: (id: number) => api(`/admin/questions/${id}/restore`, { method: 'POST' }),
+    onMutate: () => setRowErr(null),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-questions'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+      qc.invalidateQueries({ queryKey: ['admin-dups'] });
+    },
+    onError: (e, id) => setRowErr({ id, text: e instanceof ApiError ? e.message : 'Gagal mengaktifkan' }),
+  });
   return (
     <div className="stack" style={{ gap: 20 }}>
       <div className="topbar">
@@ -111,6 +134,10 @@ export default function AdminQuestions() {
           </select>
           <input className="input" type="search" placeholder="Cari teks soal, tekan Enter" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} aria-label="Cari" />
         </form>
+        <Pager data={list.data} perPage={perPage} loading={list.isFetching} onPage={setPage} onPerPage={(n) => {
+          setPerPage(n);
+          try { localStorage.setItem(PER_KEY, String(n)); } catch { /* abaikan */ }
+        }} />
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>#</th><th>Soal</th><th>Mata uji / topik</th><th>Kelas</th><th>Status</th></tr></thead>
@@ -121,15 +148,80 @@ export default function AdminQuestions() {
                   <td style={{ maxWidth: 460 }}><Link to={`/admin/soal/${r.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{r.stem}</Link></td>
                   <td className="small">{r.subject}<br /><span className="muted">{r.topic}</span></td>
                   <td>{r.grade}</td>
-                  <td><span className={`badge ${STATUS_TONE[r.status]}`}>{STATUS_ID[r.status]}</span></td>
+                  <td><div className="status-cell">
+                    <span className={`badge ${STATUS_TONE[r.status]}`}>{STATUS_ID[r.status]}</span>
+                    {r.status === 'retired' && (
+                      <>
+                        <span className="tiny muted">
+                          {r.twin_id ? <>Duplikat dari <Link to={`/admin/soal/${r.twin_id}`}>#{r.twin_id}</Link></>
+                            : r.replaced_by ? <>Diganti versi <Link to={`/admin/soal/${r.replaced_by}`}>#{r.replaced_by}</Link></>
+                            : 'Di-retire manual'}
+                        </span>
+                        {!r.twin_id && (
+                          <button type="button" className="btn ghost sm" onClick={() => restore.mutate(r.id)} disabled={restore.isPending}>Aktifkan lagi</button>
+                        )}
+                        {rowErr?.id === r.id && <span className="tiny" style={{ color: 'var(--low)' }}>{rowErr.text}</span>}
+                      </>
+                    )}
+                  </div></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {rows.length === 0 && !list.isLoading && <p className="empty">Tidak ada soal.</p>}
-        {list.hasNextPage && <div><button className="btn ghost" onClick={() => list.fetchNextPage()} disabled={list.isFetchingNextPage}>Muat lagi</button></div>}
+        {rows.length > 0 && <Pager data={list.data} perPage={perPage} loading={list.isFetching} onPage={setPage} compact />}
       </div>
+    </div>
+  );
+}
+
+/** Navigasi halaman: info jumlah data, jumlah baris per halaman, nomor halaman, dan lompat ke halaman. */
+function Pager({ data, perPage, loading, onPage, onPerPage, compact }: {
+  data?: Page; perPage: number; loading: boolean; onPage: (p: number) => void; onPerPage?: (n: number) => void; compact?: boolean;
+}) {
+  const [jump, setJump] = useState('');
+  if (!data) return null;
+  const { page, pages, total } = data;
+  const from = total === 0 ? 0 : (page - 1) * data.per_page + 1;
+  const to = Math.min(total, page * data.per_page);
+  const nums: (number | '…')[] = [];
+  for (let p = 1; p <= pages; p++) {
+    if (p === 1 || p === pages || Math.abs(p - page) <= 1) nums.push(p);
+    else if (nums[nums.length - 1] !== '…') nums.push('…');
+  }
+  function go(e: FormEvent) {
+    e.preventDefault();
+    const n = Math.round(Number(jump));
+    if (n >= 1 && n <= pages) onPage(n);
+    setJump('');
+  }
+  return (
+    <div className="pager" aria-busy={loading}>
+      <span className="small muted pager-info">
+        {total === 0 ? 'Tidak ada data' : <>Menampilkan <b>{num(from)}–{num(to)}</b> dari <b>{num(total)}</b> soal</>}
+      </span>
+      {!compact && onPerPage && (
+        <label className="small pager-size">Baris per halaman
+          <select className="input sm" value={perPage} onChange={(e) => onPerPage(Number(e.target.value))}>
+            {PER_PAGE.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      )}
+      <nav className="pager-nav" aria-label="Halaman">
+        <button type="button" className="btn quiet sm" onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Halaman sebelumnya">‹</button>
+        {nums.map((p, i) => p === '…'
+          ? <span key={`g${i}`} className="muted pager-gap">…</span>
+          : <button type="button" key={p} className={`btn sm ${p === page ? '' : 'quiet'}`} aria-current={p === page ? 'page' : undefined} onClick={() => onPage(p)}>{num(p)}</button>)}
+        <button type="button" className="btn quiet sm" onClick={() => onPage(page + 1)} disabled={page >= pages} aria-label="Halaman berikutnya">›</button>
+      </nav>
+      {!compact && pages > 1 && (
+        <form className="pager-jump small" onSubmit={go}>
+          <label htmlFor="pager-jump">Ke halaman</label>
+          <input id="pager-jump" className="input sm" type="number" min={1} max={pages} value={jump} onChange={(e) => setJump(e.target.value)} placeholder={`1–${pages}`} />
+          <button className="btn ghost sm" disabled={!jump}>Buka</button>
+        </form>
+      )}
     </div>
   );
 }
