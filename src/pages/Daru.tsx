@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 import { Icon } from '../components/Icon';
 import { Modal } from '../components/Modal';
 
@@ -50,6 +50,7 @@ export default function Daru() {
         </div>
         <button className="btn" onClick={() => setForm('new')}><Icon name="plus" /> Tambah profil</button>
       </div>
+      <VoiceCard />
       {kids.data?.length === 0 && <div className="card empty">Belum ada profil Daru.</div>}
       {!!kids.data?.length && (
         <div className="child-tabs" role="group" aria-label="Pilih profil">
@@ -165,5 +166,80 @@ function KidForm({ initial, onClose, onSaved }: { initial?: Kid; onClose: () => 
         <button type="button" className="btn quiet" onClick={onClose}>Batal</button>
       </div>
     </form>
+  );
+}
+
+type VoiceOpt = { id: string; name: string; description: string };
+type VoiceInfo = { available: boolean; selected: string; voices: VoiceOpt[] };
+const DEVICE = 'device';
+
+/** Pilihan suara pemandu di aplikasi Daru. Berlaku untuk semua profil Daru di akun ini. */
+function VoiceCard() {
+  const qc = useQueryClient();
+  const info = useQuery({ queryKey: ['daru-voices'], queryFn: ({ signal }) => api<VoiceInfo>('/kids/voices', { signal }) });
+  const choose = useMutation({
+    mutationFn: (voice: string) => api<VoiceInfo>('/kids/voices', { method: 'PUT', body: { voice } }),
+    onSuccess: (d) => qc.setQueryData(['daru-voices'], d),
+  });
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const urls = useRef<Record<string, string>>({});
+  useEffect(() => () => {
+    audio.current?.pause();
+    Object.values(urls.current).forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+
+  async function play(id: string) {
+    setErr('');
+    audio.current?.pause();
+    if (playing === id) return setPlaying(null);
+    setPlaying(id);
+    try {
+      urls.current[id] ??= URL.createObjectURL(await api<Blob>(`/kids/voice?voice=${encodeURIComponent(id)}`, { blob: true }));
+      const a = new Audio(urls.current[id]);
+      audio.current = a;
+      a.onended = () => setPlaying((p) => (p === id ? null : p));
+      await a.play();
+    } catch (x) {
+      setPlaying(null);
+      setErr(x instanceof ApiError ? x.message : 'Contoh suara tidak bisa diputar');
+    }
+  }
+
+  const d = info.data;
+  if (!d) return null;
+  const opts: VoiceOpt[] = [...d.voices, { id: DEVICE, name: 'Suara HP', description: 'Suara bawaan ponsel, tanpa internet. Terdengar lebih kaku.' }];
+  return (
+    <div className="card stack">
+      <div>
+        <h2>Suara pemandu</h2>
+        <p className="small muted">
+          Suara yang membacakan instruksi dan pujian di aplikasi Daru, untuk semua profil di akun ini.
+          {d.available ? ' Perubahan dipakai HP saat aplikasi Daru dibuka berikutnya (perlu internet sekali).' : ' Suara alami belum diaktifkan di server, jadi Daru memakai suara HP.'}
+        </p>
+      </div>
+      {err && <div className="error" role="alert">{err}</div>}
+      {choose.isError && <div className="error" role="alert">{(choose.error as Error).message}</div>}
+      <div className="voice-grid" role="radiogroup" aria-label="Suara pemandu">
+        {opts.map((v) => {
+          const on = d.selected === v.id;
+          const sample = v.id !== DEVICE && d.available;
+          return (
+            <div key={v.id} className={`voice-opt${on ? ' on' : ''}`}>
+              <button type="button" role="radio" aria-checked={on} className="voice-pick" disabled={choose.isPending || (!d.available && v.id !== DEVICE)} onClick={() => choose.mutate(v.id)}>
+                <span className="voice-dot" aria-hidden="true" />
+                <span className="voice-text"><b>{v.name}</b><span className="tiny muted">{v.description}</span></span>
+              </button>
+              {sample && (
+                <button type="button" className="btn ghost sm" onClick={() => play(v.id)} aria-label={`Dengarkan ${v.name}`}>
+                  {playing === v.id ? 'Berhenti' : 'Dengarkan'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

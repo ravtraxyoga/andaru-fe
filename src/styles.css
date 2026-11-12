@@ -145,3 +145,14 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 dialog.modal { border: none; border-radius: var(--r-panel); padding: 0; max-width: min(520px, calc(100vw - 32px)); width: 100%; }
 dialog.modal::backdrop { background: rgba(30, 16, 64, .45); }
 dialog.modal .body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Pilihan suara Daru */
+.voice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.voice-opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 4px; border: 2px solid var(--line); border-radius: var(--r-card); background: var(--card); min-width: 0; }
+.voice-opt.on { border-color: var(--purple); background: var(--purple-tint); }
+.voice-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 8px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font: inherit; border-radius: 12px; }
+.voice-pick:disabled { cursor: default; opacity: .55; }
+.voice-pick:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.voice-dot { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--purple-line); background: #fff; }
+.voice-opt.on .voice-dot { border-color: var(--purple); box-shadow: inset 0 0 0 4px #fff; background: var(--purple); }
+.voice-text { display: flex; flex-direction: column; min-width: 0; }

@@ -72,7 +72,7 @@ async function refresh(): Promise<boolean> {
   return refreshing;
 }
 
-type Opts = { method?: string; body?: unknown; raw?: BodyInit; contentType?: string; signal?: AbortSignal };
+type Opts = { method?: string; body?: unknown; raw?: BodyInit; contentType?: string; signal?: AbortSignal; blob?: boolean };
 
 export async function api<T>(path: string, opts: Opts = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = {};
@@ -99,6 +99,7 @@ export async function api<T>(path: string, opts: Opts = {}, retried = false): Pr
   if (r.status === 401 && current && !retried && !path.startsWith('/auth/')) {
     if (await refresh()) return api<T>(path, opts, true);
   }
+  if (opts.blob && r.ok) return (await r.blob()) as T;
   const data = r.status === 204 ? null : await r.json().catch(() => null);
   if (!r.ok) {
     const d = (data ?? {}) as Record<string, unknown>;
