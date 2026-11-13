@@ -40,7 +40,7 @@ export default function SessionReport() {
       <div className="grid two">
         <div className="card stack">
           <div className="row" style={{ alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontSize: 48, fontWeight: 800, color: 'var(--purple)' }}>{r.score ?? '–'}</span>
+            <span style={{ fontSize: 48, fontWeight: 800, color: 'var(--accent)' }}>{r.score ?? '–'}</span>
             <span className="muted">{r.correct_count ?? 0} dari {r.question_count} benar · {r.answered} dijawab</span>
           </div>
           <p className="small">

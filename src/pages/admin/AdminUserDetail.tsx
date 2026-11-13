@@ -104,7 +104,7 @@ export default function AdminUserDetail() {
           <div key={k.id} className="card stack">
             <div className="row between">
               <div className="row">
-                <span className="avatar" style={{ background: 'var(--gold)', color: 'var(--ink)' }}>{k.nickname.charAt(0).toUpperCase()}</span>
+                <span className="avatar" style={{ background: 'var(--gold)', color: '#1E1040' }}>{k.nickname.charAt(0).toUpperCase()}</span>
                 <div>
                   <h3>{k.nickname}</h3>
                   <p className="muted small">{AGE[k.age_group] ?? '—'} · sesi {k.session_minutes} menit · ditambahkan {fmtDateTime(k.created_at)}</p>

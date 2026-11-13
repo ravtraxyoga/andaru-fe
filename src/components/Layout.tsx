@@ -4,6 +4,7 @@ import { logout, stopImpersonation } from '../api';
 import { useImpersonation, useParent } from '../hooks/useAuth';
 import { ChildContext, useSelectedChildState } from '../hooks/useChildren';
 import { Icon } from './Icon';
+import { toggleTheme, useIsDark } from '../theme';
 
 const NAV = [
   { to: '/', label: 'Ringkasan', icon: 'home', end: true },
@@ -25,6 +26,7 @@ const ADMIN_NAV = [
 
 export function Layout() {
   const parent = useParent()!;
+  const dark = useIsDark();
   const sel = useSelectedChildState();
   return (
     <ChildContext.Provider value={sel}>
@@ -52,14 +54,21 @@ export function Layout() {
             )}
           </nav>
           <div className="me">
-            <span className="avatar sm" aria-hidden="true">{parent.name.trim().charAt(0).toUpperCase() || '?'}</span>
-            <div className="me-text">
-              <div className="me-name">{parent.name}</div>
-              <div className="me-mail">{parent.email}</div>
+            <div className="me-row">
+              <span className="avatar sm" aria-hidden="true">{parent.name.trim().charAt(0).toUpperCase() || '?'}</span>
+              <div className="me-text">
+                <div className="me-name">{parent.name}</div>
+                <div className="me-mail">{parent.email}</div>
+              </div>
             </div>
-            <button className="me-out" onClick={() => logout()} title="Keluar" aria-label="Keluar">
-              <Icon name="logout" size={18} />
-            </button>
+            <div className="me-actions">
+              <button className="me-btn" onClick={toggleTheme} aria-label={dark ? 'Pakai mode terang' : 'Pakai mode gelap'}>
+                <Icon name={dark ? 'sun' : 'moon'} size={16} /> {dark ? 'Terang' : 'Gelap'}
+              </button>
+              <button className="me-btn" onClick={() => logout()}>
+                <Icon name="logout" size={16} /> Keluar
+              </button>
+            </div>
           </div>
         </aside>
         <main className="main">

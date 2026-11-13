@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router';
 import { ApiError, getParent } from './api';
 import App from './App';
 import './styles.css';
+import './theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {

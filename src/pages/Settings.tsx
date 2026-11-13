@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { api, logout } from '../api';
 import { useParent } from '../hooks/useAuth';
 import { useSelectedChild } from '../hooks/useChildren';
+import { setThemePref, useThemePref, type ThemePref } from '../theme';
 
 export default function Settings() {
   const parent = useParent()!;
@@ -14,6 +15,7 @@ export default function Settings() {
         <PinForm />
         <UnlockForm children={children.map((c) => ({ id: c.id, name: c.name }))} />
       </div>
+      <ThemeCard />
       <div className="card row between">
         <div>
           <h2>Unduh aplikasi</h2>
@@ -96,5 +98,28 @@ function UnlockForm({ children }: { children: { id: number; name: string }[] }) 
       </label>
       <div><button className="btn danger" disabled={!childId}>Buka kunci</button></div>
     </form>
+  );
+}
+
+const THEMES: { v: ThemePref; label: string }[] = [
+  { v: 'system', label: 'Ikuti sistem' },
+  { v: 'light', label: 'Terang' },
+  { v: 'dark', label: 'Gelap' },
+];
+
+function ThemeCard() {
+  const pref = useThemePref();
+  return (
+    <div className="card row between">
+      <div>
+        <h2>Tampilan</h2>
+        <p className="muted small">Mode gelap lebih nyaman dipakai malam hari. Disimpan di browser ini.</p>
+      </div>
+      <div className="seg" role="group" aria-label="Tema tampilan">
+        {THEMES.map((t) => (
+          <button key={t.v} type="button" aria-pressed={pref === t.v} onClick={() => setThemePref(t.v)}>{t.label}</button>
+        ))}
+      </div>
+    </div>
   );
 }

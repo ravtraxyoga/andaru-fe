@@ -210,7 +210,7 @@ function ScheduleForm({ subjects, initial, oneOff, childId, onSave, onCancel }: 
         </>
       )}
       <label className="field">
-        <span className="row between"><span>Jumlah soal</span><span style={{ color: 'var(--purple)' }}>{d.question_count}</span></span>
+        <span className="row between"><span>Jumlah soal</span><span style={{ color: 'var(--accent)' }}>{d.question_count}</span></span>
         <input type="range" min={20} max={50} step={5} value={d.question_count} onChange={(e) => setD({ ...d, question_count: Number(e.target.value) })} style={{ accentColor: 'var(--purple)' }} />
         <span className="row between tiny muted"><span>20</span><span>50</span></span>
       </label>
