@@ -3,10 +3,13 @@
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 const KEY = 'andaru.auth';
+/** Sesi admin yang disimpan selama admin masuk sebagai akun Bunda. */
+const ADMIN_KEY = 'andaru.auth.admin';
 
 export type Tokens = { access_token: string; refresh_token: string; expires_in: number };
 export type Parent = { id: number; name: string; email: string; is_admin: boolean };
-type Stored = { tokens: Tokens; parent: Parent };
+export type Impersonator = { id: number; name: string };
+type Stored = { tokens: Tokens; parent: Parent; impersonator?: Impersonator; expires_at?: string };
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string, public data?: Record<string, unknown>) {
@@ -14,9 +17,9 @@ export class ApiError extends Error {
   }
 }
 
-function load(): Stored | null {
+function load(key = KEY): Stored | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as Stored) : null;
   } catch {
     return null;
@@ -58,7 +61,9 @@ async function refresh(): Promise<boolean> {
         body: JSON.stringify({ refresh_token: current!.tokens.refresh_token }),
       });
       if (!r.ok) {
-        save(null);
+        // Sesi impersonate habis (2 jam): kembali ke akun admin, bukan logout total.
+        if (current?.impersonator) restoreAdmin();
+        else save(null);
         return false;
       }
       save({ ...current!, tokens: (await r.json()) as Tokens });
@@ -118,7 +123,33 @@ export async function register(name: string, email: string, password: string, pi
   save(r);
 }
 
+let adminMem: Stored | null = null;
+
+function restoreAdmin() {
+  const admin = load(ADMIN_KEY) ?? adminMem;
+  adminMem = null;
+  try { localStorage.removeItem(ADMIN_KEY); } catch { /* abaikan */ }
+  save(admin);
+}
+
+/** Admin masuk sebagai akun Bunda (2 jam). Sesi admin disimpan dan dipulihkan saat selesai. */
+export async function impersonate(parentId: number) {
+  if (!current || current.impersonator) throw new ApiError(0, 'Selesaikan dulu sesi masuk-sebagai yang sedang berjalan');
+  const r = await api<Stored>(`/admin/parents/${parentId}/impersonate`, { method: 'POST' });
+  adminMem = current;
+  try { localStorage.setItem(ADMIN_KEY, JSON.stringify(current)); } catch { /* mode privat: cukup di memori */ }
+  save(r);
+}
+
+/** Akhiri sesi masuk-sebagai: cabut token akun Bunda, kembali ke akun admin. */
+export async function stopImpersonation() {
+  const rt = current?.impersonator ? current.tokens.refresh_token : null;
+  restoreAdmin();
+  if (rt) await api('/auth/logout', { body: { refresh_token: rt } }).catch(() => undefined);
+}
+
 export async function logout() {
+  if (current?.impersonator) return stopImpersonation();
   const rt = current?.tokens.refresh_token;
   save(null);
   if (rt) await api('/auth/logout', { body: { refresh_token: rt } }).catch(() => undefined);

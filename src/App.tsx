@@ -10,6 +10,7 @@ import Reports from './pages/Reports';
 import SessionReport from './pages/SessionReport';
 import Settings from './pages/Settings';
 import Daru from './pages/Daru';
+import Downloads from './pages/Downloads';
 import AdminQuestions from './pages/admin/AdminQuestions';
 import QuestionEdit from './pages/admin/QuestionEdit';
 import AdminImport from './pages/admin/AdminImport';
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="sesi/:id" element={<SessionReport />} />
         <Route path="pengaturan" element={<Settings />} />
         <Route path="daru" element={<Daru />} />
+        <Route path="unduh" element={<Downloads />} />
         {parent.is_admin && (
           <>
             <Route path="admin" element={<AdminQuestions />} />

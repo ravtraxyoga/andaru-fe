@@ -15,9 +15,9 @@ type AppStat = { app: AppId; installs: number; active_30d: number; push_devices:
 type Data = { releases: Release[]; apps: AppStat[] };
 
 const APPS: { id: AppId; name: string; who: string }[] = [
-  { id: 'anak', name: 'Dhanu', who: 'HP anak (TKA)' },
+  { id: 'anak', name: 'Anak', who: 'Latihan TKA di HP anak' },
   { id: 'ortu', name: 'Bunda', who: 'HP orang tua' },
-  { id: 'dini', name: 'Daru', who: 'Anak usia dini' },
+  { id: 'dini', name: 'Balita', who: 'Anak usia dini (<5 tahun)' },
 ];
 const APP_NAME = Object.fromEntries(APPS.map((a) => [a.id, a.name])) as Record<AppId, string>;
 const STATUS: Record<Release['status'], [string, string]> = { draft: ['Draf', 'mid'], published: ['Terbit', 'good'], withdrawn: ['Ditarik', 'muted'] };
@@ -103,9 +103,12 @@ export default function AdminReleases() {
           return (
             <div key={a.id} className="card app-card">
               <div className="row between">
-                <div>
-                  <h3>{a.name}</h3>
-                  <p className="muted tiny">{a.who}</p>
+                <div className="row" style={{ gap: 10 }}>
+                  <img src={`/apps/${a.id}.svg`} alt="" width={40} height={40} style={{ borderRadius: 10 }} />
+                  <div>
+                    <h3>{a.name}</h3>
+                    <p className="muted tiny">{a.who}</p>
+                  </div>
                 </div>
                 {l?.mandatory && <span className="badge low">Wajib</span>}
               </div>
@@ -208,8 +211,9 @@ export default function AdminReleases() {
           </div>
         )}
         <p className="muted tiny">
-          Versi memakai format <b>mayor.minor.patch</b> (mis. 1.2.0) dan <b>kode versi</b> yang selalu naik. Saat build:
-          <span className="mono"> flutter build apk --flavor ortu -t lib/main_ortu.dart --build-name=1.2.0 --build-number=12</span>.
+          Versi memakai format <b>mayor.minor.patch</b> (mis. 1.2.0) dan <b>kode versi</b> yang selalu naik, diambil dari
+          <span className="mono">pubspec.yaml</span>. Build dengan <span className="mono">scripts/build-apk.sh --bump patch</span>;
+          hasilnya <span className="mono">dist/andaru-&lt;app&gt;-&lt;versi&gt;-&lt;kode&gt;.apk</span>.
           App mengecek update setiap dibuka; rilis <b>wajib</b> menutup app versi lama sampai diperbarui.
         </p>
       </div>

@@ -45,13 +45,13 @@ export default function Daru() {
     <div className="stack" style={{ gap: 20 }}>
       <div className="topbar">
         <div>
-          <h1>Daru · anak usia dini</h1>
-          <p className="muted small">Permainan stimulasi untuk anak di bawah 5 tahun. Login di aplikasi Daru memakai akun ini.</p>
+          <h1>Balita · anak usia dini</h1>
+          <p className="muted small">Permainan stimulasi untuk anak di bawah 5 tahun. Login di aplikasi Balita memakai akun ini.</p>
         </div>
         <button className="btn" onClick={() => setForm('new')}><Icon name="plus" /> Tambah profil</button>
       </div>
       <VoiceCard />
-      {kids.data?.length === 0 && <div className="card empty">Belum ada profil Daru.</div>}
+      {kids.data?.length === 0 && <div className="card empty">Belum ada profil Balita.</div>}
       {!!kids.data?.length && (
         <div className="child-tabs" role="group" aria-label="Pilih profil">
           {kids.data.map((k) => (
@@ -98,12 +98,12 @@ export default function Daru() {
                   </div>
                 ))}
               </div>
-              <p className="tiny muted">Dunia lain menyusul. Daru adalah aplikasi stimulasi bermain, bukan alat pemeriksaan penglihatan atau pendengaran.</p>
+              <p className="tiny muted">Dunia lain menyusul. Aplikasi Balita adalah aplikasi stimulasi bermain, bukan alat pemeriksaan penglihatan atau pendengaran.</p>
             </div>
           </div>
         </>
       )}
-      <Modal open={form !== null} onClose={() => setForm(null)} title={form === 'new' ? 'Profil Daru baru' : 'Ubah profil'}>
+      <Modal open={form !== null} onClose={() => setForm(null)} title={form === 'new' ? 'Profil Balita baru' : 'Ubah profil'}>
         {form !== null && (
           <KidForm
             initial={form === 'new' ? undefined : form}
@@ -215,8 +215,8 @@ function VoiceCard() {
       <div>
         <h2>Suara pemandu</h2>
         <p className="small muted">
-          Suara yang membacakan instruksi dan pujian di aplikasi Daru, untuk semua profil di akun ini.
-          {d.available ? ' Perubahan dipakai HP saat aplikasi Daru dibuka berikutnya (perlu internet sekali).' : ' Suara alami belum diaktifkan di server, jadi Daru memakai suara HP.'}
+          Suara yang membacakan instruksi dan pujian di aplikasi Balita, untuk semua profil di akun ini.
+          {d.available ? ' Perubahan dipakai HP saat aplikasi Balita dibuka berikutnya (perlu internet sekali).' : ' Suara alami belum diaktifkan di server, jadi aplikasi Balita memakai suara HP.'}
         </p>
       </div>
       {err && <div className="error" role="alert">{err}</div>}

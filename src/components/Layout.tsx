@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from 'react-router';
-import { logout } from '../api';
-import { useParent } from '../hooks/useAuth';
+import { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { logout, stopImpersonation } from '../api';
+import { useImpersonation, useParent } from '../hooks/useAuth';
 import { ChildContext, useSelectedChildState } from '../hooks/useChildren';
 import { Icon } from './Icon';
 
@@ -9,8 +10,10 @@ const NAV = [
   { to: '/jadwal', label: 'Jadwal', icon: 'calendar' },
   { to: '/laporan', label: 'Laporan', icon: 'chart' },
   { to: '/anak', label: 'Anak', icon: 'kids' },
-  { to: '/daru', label: 'Daru', icon: 'star' },
+  { to: '/daru', label: 'Balita', icon: 'star' },
   { to: '/pengaturan', label: 'Pengaturan', icon: 'settings' },
+  // Hanya di sidebar; di layar kecil dibuka dari Pengaturan supaya menu bawah tidak sesak.
+  { to: '/unduh', label: 'Unduh Aplikasi', icon: 'download', sideOnly: true },
 ];
 
 const ADMIN_NAV = [
@@ -60,10 +63,11 @@ export function Layout() {
           </div>
         </aside>
         <main className="main">
+          <ImpersonationBar />
           <Outlet />
         </main>
         <nav className="bottom-nav" aria-label="Menu utama">
-          {NAV.map((n) => (
+          {NAV.filter((n) => !n.sideOnly).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end}>
               <Icon name={n.icon} size={22} />
               {n.label}
@@ -72,5 +76,30 @@ export function Layout() {
         </nav>
       </div>
     </ChildContext.Provider>
+  );
+}
+
+const tf = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+
+/** Pita peringatan selama admin masuk sebagai akun Bunda. */
+function ImpersonationBar() {
+  const imp = useImpersonation();
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  if (!imp) return null;
+  async function back() {
+    setBusy(true);
+    const id = imp!.parent.id;
+    await stopImpersonation();
+    nav(`/admin/pengguna/${id}`, { replace: true });
+  }
+  return (
+    <div className="impersonate-bar" role="status">
+      <span>
+        Anda masuk sebagai <b>{imp.parent.name}</b> ({imp.parent.email}). Semua perubahan tersimpan di akun ini.
+        {imp.until && <> Sesi berakhir pukul {tf.format(new Date(imp.until))}.</>}
+      </span>
+      <button className="btn sm" onClick={back} disabled={busy}>Kembali ke admin {imp.by.name}</button>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router';
-import { api } from '../../api';
+import { Link, useNavigate, useParams } from 'react-router';
+import { api, ApiError, impersonate } from '../../api';
 import { Icon } from '../../components/Icon';
 import { fmtDateTime, scoreTone, STATUS_LABEL } from '../../format';
 import type { SessionStatus } from '../../types';
@@ -20,9 +21,10 @@ type Detail = {
   devices: { app: string | null; app_version: string | null; last_seen_at: string | null; child: string | null; is_device_owner: boolean }[];
   children: Child[];
   kids: Kid[];
+  audit: { action: string; admin: string | null; at: string }[];
 };
 
-const APP_NAME: Record<string, string> = { anak: 'Dhanu', ortu: 'Bunda', dini: 'Daru' };
+const APP_NAME: Record<string, string> = { anak: 'Anak', ortu: 'Bunda', dini: 'Balita' };
 const AGE: Record<number, string> = { 1: '2–3 tahun', 2: '4–5 tahun' };
 const when = (s: string | null) => (s ? fmtDateTime(s) : '—');
 
@@ -31,7 +33,7 @@ export default function AdminUserDetail() {
   const q = useQuery({ queryKey: ['admin-parent', id], queryFn: ({ signal }) => api<Detail>(`/admin/parents/${id}`, { signal }) });
   if (q.isLoading) return <p className="muted">Memuat…</p>;
   if (q.isError || !q.data) return <div className="error">Akun tidak ditemukan.</div>;
-  const { parent, children, kids, devices } = q.data;
+  const { parent, children, kids, devices, audit } = q.data;
   return (
     <div className="stack" style={{ gap: 20 }}>
       <div className="topbar">
@@ -42,10 +44,11 @@ export default function AdminUserDetail() {
             <p className="muted small">{parent.email} · terdaftar {fmtDateTime(parent.created_at)}</p>
           </div>
         </div>
+        {!parent.is_admin && <ImpersonateButton id={parent.id} name={parent.name} />}
       </div>
 
       <section className="stack">
-        <h2 className="section-title">Anak TKA (Dhanu) <span className="badge muted">{children.length}</span></h2>
+        <h2 className="section-title">Anak TKA (aplikasi Anak) <span className="badge muted">{children.length}</span></h2>
         {children.length === 0 && <div className="card empty">Belum menambahkan anak TKA.</div>}
         {children.map((c) => (
           <div key={c.id} className="card stack">
@@ -95,8 +98,8 @@ export default function AdminUserDetail() {
       </section>
 
       <section className="stack">
-        <h2 className="section-title">Anak usia dini (Daru) <span className="badge muted">{kids.length}</span></h2>
-        {kids.length === 0 && <div className="card empty">Belum menambahkan profil Daru.</div>}
+        <h2 className="section-title">Anak usia dini (aplikasi Balita) <span className="badge muted">{kids.length}</span></h2>
+        {kids.length === 0 && <div className="card empty">Belum menambahkan profil Balita.</div>}
         {kids.map((k) => (
           <div key={k.id} className="card stack">
             <div className="row between">
@@ -148,6 +151,48 @@ export default function AdminUserDetail() {
           </div>
         )}
       </section>
+
+      {audit.length > 0 && (
+        <section className="stack">
+          <h2>Riwayat akses admin</h2>
+          <div className="card table-wrap">
+            <table className="table">
+              <thead><tr><th>Waktu</th><th>Admin</th><th>Aksi</th></tr></thead>
+              <tbody>
+                {audit.map((a, i) => (
+                  <tr key={i}>
+                    <td className="small">{fmtDateTime(a.at)}</td>
+                    <td className="small">{a.admin ?? '—'}</td>
+                    <td className="small">{a.action === 'impersonate' ? 'Masuk sebagai akun ini' : a.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
+  );
+}
+
+/** Masuk sebagai akun Bunda ini (2 jam, tercatat). Sesi admin dipulihkan lewat pita di atas halaman. */
+export function ImpersonateButton({ id, name, compact }: { id: number; name: string; compact?: boolean }) {
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    if (!window.confirm(`Masuk sebagai ${name}?\n\nAnda akan melihat dan bisa mengubah data akun ini selama 2 jam. Akses ini dicatat.`)) return;
+    setBusy(true);
+    try {
+      await impersonate(id);
+      nav('/', { replace: true });
+    } catch (e) {
+      setBusy(false);
+      window.alert(e instanceof ApiError ? e.message : 'Gagal masuk sebagai akun ini.');
+    }
+  }
+  return (
+    <button className={`btn sm ${compact ? 'quiet' : 'ghost'}`} onClick={go} disabled={busy} title={`Masuk sebagai ${name}`}>
+      <Icon name="login" size={16} /> {compact ? 'Masuk' : 'Masuk sebagai akun ini'}
+    </button>
   );
 }

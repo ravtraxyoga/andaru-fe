@@ -1,15 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { api, ApiError } from '../../api';
 import { Icon } from '../../components/Icon';
+import { Pager, usePerPage } from '../../components/Pager';
 import type { Subject } from '../../types';
 
 type Row = { id: number; subject: string; topic: string; grade: number; difficulty: number; stem: string; status: string; has_image: boolean; twin_id: number | null; replaced_by: number | null };
 type Page = { items: Row[]; total: number; page: number; per_page: number; pages: number };
-const PER_PAGE = [10, 25, 50, 100];
-const PER_KEY = 'andaru.admin.perPage';
-const num = (n: number) => n.toLocaleString('id-ID');
 type DupGroup = { subject: string; stem: string; count: number; items: { id: number; status: string; source_ref: string | null; topic: string; correct: string; used: boolean }[] };
 type Stats = { by_subject: { subject_id: number; subject: string; published: number; draft: number; retired: number }[]; parents: number; children: number; sessions_7d: number };
 
@@ -22,14 +20,7 @@ export default function AdminQuestions() {
   const subjects = useQuery({ queryKey: ['subjects'], queryFn: ({ signal }) => api<Subject[]>('/subjects', { signal }) });
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: ({ signal }) => api<Stats>('/admin/stats', { signal }) });
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(() => {
-    try {
-      const v = Number(localStorage.getItem(PER_KEY));
-      return PER_PAGE.includes(v) ? v : 25;
-    } catch {
-      return 25;
-    }
-  });
+  const [perPage, setPerPage] = usePerPage('andaru.admin.perPage');
   const filterKey = new URLSearchParams(Object.entries({ ...f, q: search }).filter(([, v]) => v)).toString();
   useEffect(() => setPage(1), [filterKey, perPage]);
   const list = useQuery({
@@ -134,10 +125,6 @@ export default function AdminQuestions() {
           </select>
           <input className="input" type="search" placeholder="Cari teks soal, tekan Enter" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} aria-label="Cari" />
         </form>
-        <Pager data={list.data} perPage={perPage} loading={list.isFetching} onPage={setPage} onPerPage={(n) => {
-          setPerPage(n);
-          try { localStorage.setItem(PER_KEY, String(n)); } catch { /* abaikan */ }
-        }} />
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>#</th><th>Soal</th><th>Mata uji / topik</th><th>Kelas</th><th>Status</th></tr></thead>
@@ -170,58 +157,10 @@ export default function AdminQuestions() {
           </table>
         </div>
         {rows.length === 0 && !list.isLoading && <p className="empty">Tidak ada soal.</p>}
-        {rows.length > 0 && <Pager data={list.data} perPage={perPage} loading={list.isFetching} onPage={setPage} compact />}
+        {list.data && (
+          <Pager page={list.data.page} perPage={list.data.per_page} total={list.data.total} unit="soal" loading={list.isFetching} onPage={setPage} onPerPage={setPerPage} />
+        )}
       </div>
-    </div>
-  );
-}
-
-/** Navigasi halaman: info jumlah data, jumlah baris per halaman, nomor halaman, dan lompat ke halaman. */
-function Pager({ data, perPage, loading, onPage, onPerPage, compact }: {
-  data?: Page; perPage: number; loading: boolean; onPage: (p: number) => void; onPerPage?: (n: number) => void; compact?: boolean;
-}) {
-  const [jump, setJump] = useState('');
-  if (!data) return null;
-  const { page, pages, total } = data;
-  const from = total === 0 ? 0 : (page - 1) * data.per_page + 1;
-  const to = Math.min(total, page * data.per_page);
-  const nums: (number | '…')[] = [];
-  for (let p = 1; p <= pages; p++) {
-    if (p === 1 || p === pages || Math.abs(p - page) <= 1) nums.push(p);
-    else if (nums[nums.length - 1] !== '…') nums.push('…');
-  }
-  function go(e: FormEvent) {
-    e.preventDefault();
-    const n = Math.round(Number(jump));
-    if (n >= 1 && n <= pages) onPage(n);
-    setJump('');
-  }
-  return (
-    <div className="pager" aria-busy={loading}>
-      <span className="small muted pager-info">
-        {total === 0 ? 'Tidak ada data' : <>Menampilkan <b>{num(from)}–{num(to)}</b> dari <b>{num(total)}</b> soal</>}
-      </span>
-      {!compact && onPerPage && (
-        <label className="small pager-size">Baris per halaman
-          <select className="input sm" value={perPage} onChange={(e) => onPerPage(Number(e.target.value))}>
-            {PER_PAGE.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-      )}
-      <nav className="pager-nav" aria-label="Halaman">
-        <button type="button" className="btn quiet sm" onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Halaman sebelumnya">‹</button>
-        {nums.map((p, i) => p === '…'
-          ? <span key={`g${i}`} className="muted pager-gap">…</span>
-          : <button type="button" key={p} className={`btn sm ${p === page ? '' : 'quiet'}`} aria-current={p === page ? 'page' : undefined} onClick={() => onPage(p)}>{num(p)}</button>)}
-        <button type="button" className="btn quiet sm" onClick={() => onPage(page + 1)} disabled={page >= pages} aria-label="Halaman berikutnya">›</button>
-      </nav>
-      {!compact && pages > 1 && (
-        <form className="pager-jump small" onSubmit={go}>
-          <label htmlFor="pager-jump">Ke halaman</label>
-          <input id="pager-jump" className="input sm" type="number" min={1} max={pages} value={jump} onChange={(e) => setJump(e.target.value)} placeholder={`1–${pages}`} />
-          <button className="btn ghost sm" disabled={!jump}>Buka</button>
-        </form>
-      )}
     </div>
   );
 }

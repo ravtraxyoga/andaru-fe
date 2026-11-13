@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { api, logout } from '../api';
 import { useParent } from '../hooks/useAuth';
 import { useSelectedChild } from '../hooks/useChildren';
@@ -12,6 +13,13 @@ export default function Settings() {
       <div className="grid two">
         <PinForm />
         <UnlockForm children={children.map((c) => ({ id: c.id, name: c.name }))} />
+      </div>
+      <div className="card row between">
+        <div>
+          <h2>Unduh aplikasi</h2>
+          <p className="muted small">APK terbaru aplikasi Bunda, Anak, dan Balita.</p>
+        </div>
+        <Link to="/unduh" className="btn sm ghost">Buka</Link>
       </div>
       <div className="card stack">
         <h2>Akun</h2>

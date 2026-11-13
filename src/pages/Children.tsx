@@ -114,7 +114,7 @@ export default function Children() {
               <div className="code">{code.pairing_code.slice(0, 3)} {code.pairing_code.slice(3)}</div>
             </div>
             <ol className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
-              <li>Pasang aplikasi Dhanu di HP anak.</li>
+              <li>Pasang aplikasi Anak di HP anak.</li>
               <li>Buka aplikasi, masukkan kode di atas.</li>
               <li>Izinkan notifikasi supaya pengingat jadwal masuk.</li>
             </ol>
