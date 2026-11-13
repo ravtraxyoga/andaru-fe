@@ -13,6 +13,9 @@ import Daru from './pages/Daru';
 import AdminQuestions from './pages/admin/AdminQuestions';
 import QuestionEdit from './pages/admin/QuestionEdit';
 import AdminImport from './pages/admin/AdminImport';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminUserDetail from './pages/admin/AdminUserDetail';
+import AdminReleases from './pages/admin/AdminReleases';
 
 export default function App() {
   const parent = useParent();
@@ -39,6 +42,9 @@ export default function App() {
             <Route path="admin" element={<AdminQuestions />} />
             <Route path="admin/soal/:id" element={<QuestionEdit />} />
             <Route path="admin/impor" element={<AdminImport />} />
+            <Route path="admin/pengguna" element={<AdminUsers />} />
+            <Route path="admin/pengguna/:id" element={<AdminUserDetail />} />
+            <Route path="admin/update" element={<AdminReleases />} />
           </>
         )}
       </Route>

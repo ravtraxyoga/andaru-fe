@@ -123,3 +123,27 @@ export async function logout() {
   save(null);
   if (rt) await api('/auth/logout', { body: { refresh_token: rt } }).catch(() => undefined);
 }
+
+/** Unggah file besar (mis. APK) dengan progres. Token disegarkan dulu lewat request ringan. */
+export async function uploadFile<T>(path: string, file: File, onProgress: (ratio: number) => void, method = 'PUT'): Promise<T> {
+  await api('/me');
+  return new Promise<T>((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open(method, `${BASE}/v1${path}`);
+    if (current) x.setRequestHeader('Authorization', `Bearer ${current.tokens.access_token}`);
+    x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    x.onerror = () => reject(new ApiError(0, 'Unggahan terputus'));
+    x.onload = () => {
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = JSON.parse(x.responseText);
+      } catch {
+        /* bukan JSON */
+      }
+      if (x.status >= 200 && x.status < 300) resolve(data as T);
+      else reject(new ApiError(x.status, typeof data?.error === 'string' ? data.error : `Gagal (${x.status})`));
+    };
+    x.send(file);
+  });
+}
